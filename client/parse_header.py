@@ -6,14 +6,16 @@ def parse_header():
     names = []
     pack = []
     try:
-        lines = open(header_file).readlines()
+        with open(header_file, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
     except IOError:
-        print "no such file", header_file
+        print("no such file", header_file)
         exit(1)
+    
     for line in lines:
-        m = re.search('(int|byte|float)\s(\w+)',line)
+        m = re.search('(int|byte|float)\s(\w+)', line)
         if m:
-            #print m.group(1),m.group(2)
+            #print(m.group(1), m.group(2))
             names.append(m.group(2))
             if m.group(1) == 'int':
                 pack.append('h')
@@ -22,9 +24,10 @@ def parse_header():
             elif m.group(1) == 'byte':
                 pack.append('B')
             else:
-                print "bad type:", m.group(1)
+                print("bad type:", m.group(1))
                 exit(1)
 
-    return (names,pack)
+    return (names, pack)
+
 if __name__ == '__main__':
-    print parse_header()
+    print(parse_header())

@@ -31,7 +31,7 @@ def get_robot_config():
       string = m.group(1)
 
     except AttributeError:
-      print "couldn't parse robot's output:", response
+      print("couldn't parse robot's output:", response)
       return
 
     #load this from the config file
@@ -41,7 +41,7 @@ def get_robot_config():
       values = struct.unpack(fmt,string)
       return (pack,names,list(values))
     except struct.error:
-      print "bad data, machine said:", response
+      print("bad data, machine said:", response)
       exit(1)
 
 #takes a json config file and loads into the robot
@@ -53,7 +53,7 @@ def load_robot_config():
         try:
             values[names.index(key)] = config[key]
         except ValueError:
-            print key, "not in robot's config"
+            print(key, "not in robot's config")
             exit(1)
     #otherwise, ok to go
     load_config(pack,values)
@@ -65,13 +65,13 @@ def load_config(pack,values):
     response = send_robot_commands(["k0,0"])
     #don't use the function we have, as it doesn't work with this - because of line splitting?
     serial_port.write(string) 
-    print read_serial_response()
+    print(read_serial_response())
 
 #update a single value of the robots config. Checks against the robot's config.h
 def update_robot_config():
-    print args.updateconfig
+    print(args.updateconfig)
     (pack,names,values) = get_robot_config()
-    m = re.match('(\w+)=(\w+)',args.updateconfig)
+    m = re.match('(\\w+)=(\\w+)',args.updateconfig)
     if m:
       if m.group(1) in names:
         try:
@@ -79,14 +79,14 @@ def update_robot_config():
           values[names.index(m.group(1))] = value
           load_config(pack,values)
         except ValueError:
-          print "bad value", m.group(2)
+          print("bad value", m.group(2))
         
       else:
-        print "no such name", m.group(1)
-        print "use one of", names
+        print("no such name", m.group(1))
+        print("use one of", names)
        
     else:
-      print "didn't understand config, needs to be name=value", args.updateconfig
+      print("didn't understand config, needs to be name=value", args.updateconfig)
 
 #fetches robot id
 def fetch_robot_id():
@@ -124,12 +124,12 @@ def update_robot_dimensions():
     url = args.url + '/api/v1/endpoint/' + fetch_robot_id() + "/"
     headers = {'content-type': 'application/json'}
     r = requests.patch(url, data=json.dumps(payload),headers=headers)
-    print r.status_code
+    print(r.status_code)
     if r.status_code == 202:
-        print "updated ok"
+        print("updated ok")
     else:
-        print "failed to update"
-        print r.text.replace("\\n","\n")
+        print("failed to update")
+        print(r.text.replace("\\n","\n"))
 
 def update_robot_status():
     status_commands=["q"]
@@ -145,17 +145,17 @@ def update_robot_status():
     url = args.url + '/api/v1/endpoint/' + fetch_robot_id() + "/"
     headers = {'content-type': 'application/json'}
     r = requests.patch(url, data=json.dumps(payload),headers=headers)
-    print r.status_code
+    print(r.status_code)
     if r.status_code == 202:
-        print "updated ok"
+        print("updated ok")
     else:
-        print "failed to update"
+        print("failed to update")
     return response
     
 def fetch_data():
     url = args.url + '/endpoint_data/' + fetch_robot_id() + "/?consume=true"
     if args.verbose:
-        print "fetching from", url
+        print("fetching from", url)
     gcodes = []
     count = 0
     while True:
@@ -165,7 +165,7 @@ def fetch_data():
             if r.status_code == 200:
                 new_codes = r.text.splitlines()
                 if args.verbose:
-                    print "%d: got %d gcodes from server" % ( count, len(new_codes) )
+                    print("%d: got %d gcodes from server" % ( count, len(new_codes) ))
                 gcodes = gcodes + new_codes
             elif r.status_code == 204:
                 #end of the gcodes
@@ -174,18 +174,18 @@ def fetch_data():
                 print("server has a problem with the gcodes")
                 print("try refreshing URL by hand to clear bad gcode files")
             else:
-                print "unexpected server response ", r.status_code 
+                print("unexpected server response ", r.status_code)
                 return gcodes
 
-        except requests.exceptions.ConnectionError, e:
-            print >>sys.stderr, e
+        except requests.exceptions.ConnectionError as e:
+            print(e, file=sys.stderr)
             return gcodes
 
 
 def finish_serial():
     try:
         if args.verbose:
-            print "closing serial"
+            print("closing serial")
         serial_port.close()
     except serial.SerialException:
         # We are explicitely silencing the error here.
@@ -196,21 +196,19 @@ def finish_serial():
 this requires the robot to respond in the expected way, where all responsed end with "ok"
 """
 def read_serial_response():
-
-  response = ""
-  all_lines = ""
-  #this needs to find a \r\nok\r\n I think, but don't know why
-  #just ok\r\n doesn't work
-  while string.find(response,"ok"):
-    response = serial_port.readline()
-    if response == "":
-      print >>sys.stderr, "timeout on serial read"
-      finish_serial()
-      exit(1)
-    if args.verbose:
-      print "<- %s" % response,
-    all_lines += response
-  return all_lines
+    response = ""
+    all_lines = ""
+    # Replace string.find with in operator
+    while "ok" not in response:
+        response = serial_port.readline().decode('utf-8')  # Add decode for bytes to str
+        if response == "":
+            print("timeout on serial read", file=sys.stderr)
+            finish_serial()
+            raise IOError("Serial timeout")  # Raise instead of exit
+        if args.verbose:
+            print(f"<- {response}", end='')  # Use f-string and end=''
+        all_lines += response
+    return all_lines
 
 def readFile():
   gcode = open(args.file)
@@ -225,8 +223,8 @@ def setup_serial():
     serial_port.writeTimeout = args.timeout
     serial_port.baudrate=args.baud
     serial_port.open()
-  except IOError, e:
-    print "robot not connected?", e
+  except IOError as e:
+    print("robot not connected?", e)
     exit(1)
   return serial_port
 
@@ -261,17 +259,27 @@ def setup_robot():
 
 
 def send_robot_commands(gcodes):
-  p = re.compile( "^#" )
-  response = ""
-  for line in gcodes:
-    if p.match(line):
-      print "skipping line:", line
-    elif not line == None:
-      if args.verbose:
-        print "-> %s" % line,
-      serial_port.write(str(line)) #str added because we get unicode from the server
-      response += read_serial_response()
-  return response
+    p = re.compile("^#")
+    response = ""
+    for line in gcodes:
+        if p.match(line):
+            print(f"skipping line: {line}")  # Use f-string
+        elif line is not None:
+            if args.verbose:
+                print(f"-> {line}", end='')  # Use f-string and end=''
+            # Encode string to bytes before sending
+            serial_port.write(str(line))
+            response += read_serial_response()
+    return response
+
+def get_lock():
+    file = "/tmp/feed.lock"
+    fd = open(file,'w')
+    try:
+        fcntl.lockf(fd,fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except IOError:
+        print(f"another process is running with lock. quitting! {file}", file=sys.stderr)
+        raise   
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="feed polar files to polargraph robot")
@@ -339,32 +347,23 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    print "started ", datetime.datetime.now()
+    print("started ", datetime.datetime.now())
     gcodes = []
 
     #locking
-    file = "/tmp/feed.lock"
-    fd = open(file,'w')
-    try:
-        print "check lock"
-        fcntl.lockf(fd,fcntl.LOCK_EX | fcntl.LOCK_NB)
-        print "ok"
-    except IOError:
-        print "another process is running with lock. quitting!", file
-        exit(1)
+    get_lock()
 
     #get serial init first, as lots depends on getting data from the robot
     if args.norobot:
         update_robot_status()
-        exit(0)
+        sys.exit(0)
     else:
         serial_port = setup_serial()
         if args.updatedimensions:
             update_robot_dimensions()
-	#we should check robot's status anyway, regardless of sending it to server
+        #we should check robot's status anyway, regardless of sending it to server
         if args.sendstatus:
             response = update_robot_status()
-
 
     #send a file   
     if args.file:
@@ -376,15 +375,15 @@ if __name__ == '__main__':
     if args.server:
         gcodes = fetch_data()
 
-
     if args.dumpconfig:
         (pack,names,values) =  get_robot_config()
         config = {}
         for i in range(len(names)):
-          print names[i], '=', values[i]
-          config[names[i]] = values[i]
+            print(f"{names[i]} = {values[i]}")
+            config[names[i]] = values[i]
         print("config dumped to file: config")
-        open("config",'w').write(json.dumps(config))
+        with open("config",'w') as f:
+            f.write(json.dumps(config))
     if args.updateconfig:
         update_robot_config()
     if args.loadconfig:
@@ -399,11 +398,11 @@ if __name__ == '__main__':
         while True:
             response = read_serial_response()
     else:
-        print "no gcodes found"
+        print("no gcodes found")
 
     if args.store_file:
-        store=open(args.store_file,'w+')
-        store.write(response)
+        with open(args.store_file, 'w') as store:  # Use context manager
+            store.write(response)
 
     finish_serial()
 

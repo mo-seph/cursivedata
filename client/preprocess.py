@@ -3,68 +3,71 @@ import argparse
 import re
 
 def parse(args):
-  try:
-    gcode = open( args.file )
-  except:
-    print "bad file"
-    exit( 1 )
-  
+    try:
+        with open(args.file, 'r', encoding='utf-8') as gcode:
+            gcodes = gcode.readlines()
+    except IOError as i:
+        print(f"bad file: {i}")
+        raise i
 
   #start the file
   #print "p3,100"
   #print "c"
 
-  xmin = 100000
-  xmax = 0
-  ymin = 100000
-  ymax = 0
+    xmin = 100000
+    xmax = 0
+    ymin = 100000
+    ymax = 0
 
-  gcodes = gcode.readlines()
-  startCode = re.compile( "^G([01])(?: X(\S+))?(?: Y(\S+))?(?: Z(\S+))?$")
-  contCode =  re.compile( "^(?: X(\S+))?(?: Y(\S+))?(?: Z(\S+))?$")
-  #p = re.compile( "G([01])(?= Z(\S+))")
-  for line in gcodes:
-    s = startCode.match(line)
-    c = contCode.match(line)
-    gcode = 0
-    if s:
-      gcode = s.group(1)
-      x = s.group(2)
-      y = s.group(3)
-      z = float(s.group(4))
-      if z > 0 :
-        #don't draw
-        print "d0"
-      else:
-        #draw
-        print "d1"
-    elif c: 
-      try:
-        x = float(c.group(1))
-      except:
-        x = lastX 
-      try:
-        y = float(c.group(2))
-      except:
-        y = lastY
-  #    z = float(c.group(3))
-  #    print line
-      outx = x*args.scale+args.xoffset
-      outy = args.ysub - y*args.scale+args.yoffset
-      print "g%d,%d" %  (outx,outy) 
-      lastX = x
-      lastY = y
-      if outx < xmin:
-        xmin = outx 
-      if outx > xmax:
-        xmax = outx
-      if outy < ymin:
-        ymin = outy
-      if outy > ymax:
-        ymax = outy
+    startCode = re.compile(r"^G([01])(?: X(\S+))?(?: Y(\S+))?(?: Z(\S+))?$")
+    contCode = re.compile(r"^(?: X(\S+))?(?: Y(\S+))?(?: Z(\S+))?$")
+    #p = re.compile("G([01])(?= Z(\S+))")
+    
+    lastX = 0  # Added initialization
+    lastY = 0  # Added initialization
+    
+    for line in gcodes:
+        s = startCode.match(line)
+        c = contCode.match(line)
+        gcode = 0
+        if s:
+            gcode = s.group(1)
+            x = s.group(2)
+            y = s.group(3)
+            z = float(s.group(4))
+            if z > 0:
+                #don't draw
+                print("d0")
+            else:
+                #draw
+                print("d1")
+        elif c: 
+            try:
+                x = float(c.group(1))
+            except (TypeError, ValueError):
+                x = lastX 
+            try:
+                y = float(c.group(2))
+            except (TypeError, ValueError):
+                y = lastY
+            #z = float(c.group(3))
+            #print(line)
+            outx = x * args.scale + args.xoffset
+            outy = args.ysub - y * args.scale + args.yoffset
+            print("g%d,%d" % (outx, outy))
+            lastX = x
+            lastY = y
+            if outx < xmin:
+                xmin = outx 
+            if outx > xmax:
+                xmax = outx
+            if outy < ymin:
+                ymin = outy
+            if outy > ymax:
+                ymax = outy
 
-  print "# xmin %f xmax %f" % (xmin, xmax)
-  print "# ymin %f ymax %f" % (ymin, ymax)
+    print("# xmin %f xmax %f" % (xmin, xmax))
+    print("# ymin %f ymax %f" % (ymin, ymax))
 
 
 if __name__ == '__main__':
@@ -91,7 +94,7 @@ if __name__ == '__main__':
         help="mm long side of material to cut the stones from")
     parser.add_argument('--drawSizeLine',
         action='store_const', const=True, dest='drawSizeLine', default=False,
-      """
+    """
     args = parser.parse_args()
 
     #set values, must be a better way of doing this
