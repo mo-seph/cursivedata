@@ -38,7 +38,7 @@ def get_robot_config():
     (names,pack) = parse_header.parse_header()
     fmt = "=" + ''.join(pack)
     try:
-      values = struct.unpack(fmt,string)
+      values = struct.unpack(fmt,bytes(string,"iso-8859-1"))
       return (pack,names,list(values))
     except struct.error:
       print("bad data, machine said:", response)
@@ -200,7 +200,7 @@ def read_serial_response():
     all_lines = ""
     # Replace string.find with in operator
     while "ok" not in response:
-        response = serial_port.readline().decode('utf-8')  # Add decode for bytes to str
+        response = serial_port.readline().decode("iso-8859-1") # Add decode for bytes to str
         if response == "":
             print("timeout on serial read", file=sys.stderr)
             finish_serial()
@@ -268,7 +268,7 @@ def send_robot_commands(gcodes):
             if args.verbose:
                 print(f"-> {line}", end='')  # Use f-string and end=''
             # Encode string to bytes before sending
-            serial_port.write(str(line))
+            serial_port.write(str(line).encode("iso-8859-1"))
             response += read_serial_response()
     return response
 
